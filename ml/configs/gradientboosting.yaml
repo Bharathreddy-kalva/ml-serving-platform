@@ -1,0 +1,11 @@
+experiment_name: iris-classifier-v2-gb
+mlflow_tracking_uri: http://localhost:5000
+
+classifier_type: gradient_boosting
+
+# GradientBoostingClassifier hyperparameters
+n_estimators: 200
+learning_rate: 0.05
+max_depth: 3
+subsample: 0.8
+random_state: 42

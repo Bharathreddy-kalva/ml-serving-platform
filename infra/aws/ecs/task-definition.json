@@ -1,0 +1,37 @@
+{
+  "family": "mlserving-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/mlserving-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/mlserving-backend:latest",
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "MLFLOW_TRACKING_URI", "value": "http://mlflow.internal:5001" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL",    "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mlserving/DATABASE_URL" },
+        { "name": "API_SECRET_KEY",  "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mlserving/API_SECRET_KEY" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mlserving-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3
+      }
+    }
+  ]
+}

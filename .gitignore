@@ -1,0 +1,56 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.so
+
+# ML artefacts
+mlruns/
+mlartifacts/
+*.joblib
+*.pkl
+*.h5
+*.onnx
+models/
+
+# Node
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfplan
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Claude Code (user-specific settings and memory)
+.claude/

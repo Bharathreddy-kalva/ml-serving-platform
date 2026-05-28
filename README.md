@@ -1,5 +1,7 @@
 # ML Model Serving & Monitoring Platform
 
+[![CI/CD](https://github.com/Bharathreddy-kalva/ml-serving-platform/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Bharathreddy-kalva/ml-serving-platform/actions/workflows/ci-cd.yml)
+
 A production-grade, fully Dockerised monorepo for training, serving, A/B testing, drift monitoring, and auto-retraining scikit-learn models.
 
 ---

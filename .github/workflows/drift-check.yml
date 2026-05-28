@@ -1,0 +1,121 @@
+name: Drift Check
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # 00:00, 06:00, 12:00, 18:00 UTC
+  workflow_dispatch:          # allow manual runs from the Actions tab
+
+permissions:
+  issues: write   # needed to create issues via GITHUB_TOKEN
+
+jobs:
+  drift-check:
+    name: Check for feature drift
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Fetch drift report from deployed backend ─────────────────────────
+      - name: Fetch drift report
+        id: fetch
+        run: |
+          STATUS=$(curl -o drift_report.json -w "%{http_code}" -sf \
+            "${{ secrets.RENDER_BACKEND_URL }}/api/drift/iris-classifier?version=1" \
+            2>/dev/null || echo "000")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Backend returned HTTP $STATUS — skipping drift check"
+            echo '{"drifted_features":0,"total_predictions":0,"features":[]}' > drift_report.json
+          fi
+
+          DRIFTED=$(python3 -c "
+          import json, sys
+          try:
+              d = json.load(open('drift_report.json'))
+              print(d.get('drifted_features', 0))
+          except Exception:
+              print(0)
+          ")
+          echo "drifted_count=$DRIFTED" >> "$GITHUB_OUTPUT"
+          cat drift_report.json
+
+      # ── 2. Build issue body (only when drift detected) ──────────────────────
+      - name: Build issue body
+        id: issue
+        if: steps.fetch.outputs.drifted_count != '0'
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+          from datetime import datetime, timezone
+
+          d = json.load(open("drift_report.json"))
+          features = d.get("features", [])
+          drifted  = [f for f in features if f["drifted"]]
+
+          lines = [
+              "## ⚠ Feature Drift Detected — `iris-classifier`",
+              "",
+              f"**Detected at:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}  ",
+              f"**Predictions analysed:** {d.get('total_predictions', 'n/a')}  ",
+              f"**Drifted features:** {len(drifted)} / {len(features)}",
+              "",
+              "### PSI scores",
+              "",
+              "| Feature | PSI | KS statistic | Status |",
+              "|---------|----:|-------------:|--------|",
+          ]
+          for f in features:
+              icon = "🔴 **Drifted**" if f["drifted"] else "🟢 Stable"
+              lines.append(
+                  f"| `{f['feature_name']}` | {f['psi']:.4f} | {f['ks_statistic']:.4f} | {icon} |"
+              )
+
+          lines += [
+              "",
+              "> PSI > 0.2 indicates significant distribution shift.",
+              "> The auto-retrainer will pick this up on the next 60-second check cycle.",
+              "> To retrain manually: `make retrain` or call `POST /api/retrain/iris-classifier`.",
+          ]
+
+          body = "\n".join(lines)
+
+          # Write multiline output using heredoc delimiter
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("body<<DRIFT_EOF\n")
+              fh.write(body + "\n")
+              fh.write("DRIFT_EOF\n")
+          PYEOF
+
+      # ── 3. Create GitHub issue (deduplicated: skip if open one exists) ──────
+      - name: Open GitHub issue
+        if: steps.fetch.outputs.drifted_count != '0'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Check for an existing open drift issue to avoid duplicates
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: 'open',
+              labels: 'drift',
+              per_page: 1,
+            });
+
+            if (existing.data.length > 0) {
+              core.info(`Open drift issue #${existing.data[0].number} already exists — skipping.`);
+              return;
+            }
+
+            const body = `${{ steps.issue.outputs.body }}`;
+            const { data: issue } = await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  '⚠ Drift Detected in iris-classifier',
+              body:   body,
+              labels: ['drift', 'monitoring'],
+            });
+
+            core.info(`Created issue #${issue.number}: ${issue.html_url}`);
+            core.summary.addHeading('Drift issue created');
+            core.summary.addLink(`#${issue.number}`, issue.html_url);
+            await core.summary.write();

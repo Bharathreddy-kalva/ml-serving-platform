@@ -1,0 +1,62 @@
+# render.yaml — Render.com Infrastructure as Code (Blueprint)
+#
+# Usage:
+#   1. Push this file to your GitHub repo (already done).
+#   2. In Render dashboard → New → Blueprint Instance → connect this repo.
+#   3. Add required secrets in Render dashboard after first deploy:
+#        MLFLOW_TRACKING_URI   — URL of your MLflow tracking server
+#        BACKEND_CORS_ORIGINS  — JSON array of allowed frontend origins
+#   4. Make GHCR images public, or add a registry credential in Render:
+#        Dashboard → Account Settings → Registry Credentials → ghcr.io
+#
+# Docs: https://render.com/docs/infrastructure-as-code
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── FastAPI inference + monitoring backend ──────────────────────────────────
+  - type: web
+    name: ml-backend
+    runtime: image
+    image:
+      url: ghcr.io/bharathreddy-kalva/ml-serving-platform/backend:latest
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ml-postgres
+          property: connectionString
+      - key: MLFLOW_TRACKING_URI
+        value: ""              # ← fill in after deploying an MLflow service, or use SQLite
+      - key: AB_SPLIT_PERCENT
+        value: "50"
+      - key: RETRAIN_CHECK_INTERVAL
+        value: "3600"          # 1-hour checks in prod (60 s is too noisy)
+      - key: RETRAIN_COOLDOWN_SECONDS
+        value: "86400"         # 24-hour cooldown in prod
+      - key: RETRAIN_CONFIG
+        value: ml/configs/retrain.yaml
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://ml-frontend.onrender.com"]'
+      - key: MLFLOW_MODEL_STAGES
+        value: '["Production","Staging","None"]'
+
+  # ── React dashboard ─────────────────────────────────────────────────────────
+  - type: web
+    name: ml-frontend
+    runtime: image
+    image:
+      url: ghcr.io/bharathreddy-kalva/ml-serving-platform/frontend:latest
+    plan: free
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# ── Managed PostgreSQL ─────────────────────────────────────────────────────────
+databases:
+  - name: ml-postgres
+    plan: free
+    databaseName: mlserving
+    user: mlserving

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # 50 means 50 % → v1 (Staging), 50 % → v2 (Production).
     ab_split_percent: int = 50
 
+    # Config passed to train.py for auto-retraining. Override via RETRAIN_CONFIG env var.
+    retrain_config: str = "ml/configs/retrain.yaml"
+    # Seconds between drift checks by the background scheduler.
+    retrain_check_interval: int = 60
+    # Minimum seconds between two auto-retrains for the same model.
+    retrain_cooldown_seconds: int = 600
+
     api_secret_key: str = "changeme-secret"
     backend_cors_origins: list[str] = ["http://localhost:3000"]
 

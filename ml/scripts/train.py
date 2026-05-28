@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import mlflow
@@ -79,7 +80,9 @@ def save_feature_stats(X_train: np.ndarray, feature_names: list[str], out_path: 
 def main(config_path: str, model_name: str):
     cfg = load_config(config_path)
 
-    mlflow.set_tracking_uri(cfg.get("mlflow_tracking_uri", "http://localhost:5000"))
+    # Env var takes precedence so the retrainer subprocess inherits the backend's URI
+    mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI") or cfg.get("mlflow_tracking_uri", "http://localhost:5000")
+    mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(cfg.get("experiment_name", "iris-classifier-v1"))
 
     dataset = load_iris()

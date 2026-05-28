@@ -13,3 +13,5 @@ setuptools>=70.0,<82
 sqlalchemy==2.0.30
 alembic==1.13.1
 python-dotenv==1.0.1
+apscheduler>=3.10,<4
+asyncpg>=0.29

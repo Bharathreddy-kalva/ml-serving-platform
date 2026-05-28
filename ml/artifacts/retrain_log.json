@@ -1,0 +1,80 @@
+[
+  {
+    "id": "829fca23-6bcc-4ba3-9137-dca877abb17c",
+    "timestamp": "2026-05-28 21:20:32.349694",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "auto",
+    "reason": "4/4 features drifted (max PSI=30.7756)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": "10",
+    "duration_seconds": 7.8,
+    "error": null
+  },
+  {
+    "id": "4af8c392-fe6b-4b3e-8227-bf192998c6a9",
+    "timestamp": "2026-05-28 21:09:41.326327",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "manual",
+    "reason": "Manual trigger via dashboard (v1)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": "9",
+    "duration_seconds": 8.2,
+    "error": null
+  },
+  {
+    "id": "66099aed-6d4e-4ceb-b5f1-1432348b220d",
+    "timestamp": "2026-05-28 21:01:32.348623",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "auto",
+    "reason": "4/4 features drifted (max PSI=30.7756)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": "8",
+    "duration_seconds": 7.3,
+    "error": null
+  },
+  {
+    "id": "79ed2611-c61f-4269-99a1-83b4a433d450",
+    "timestamp": "2026-05-28 20:50:58.017382",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "manual",
+    "reason": "Manual trigger via dashboard (v1)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": "7",
+    "duration_seconds": 6.9,
+    "error": null
+  },
+  {
+    "id": "fd085c19-a6f6-4046-89b8-d83b985abb6b",
+    "timestamp": "2026-05-28 20:47:25.835126",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "manual",
+    "reason": "Manual trigger via dashboard (v1)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": null,
+    "duration_seconds": 7.0,
+    "error": null
+  },
+  {
+    "id": "e0ef9722-63e9-4125-9fd7-a3441b4a44aa",
+    "timestamp": "2026-05-28 20:46:44.907284",
+    "model_name": "iris-classifier",
+    "triggered_by_version": "1",
+    "trigger": "auto",
+    "reason": "4/4 features drifted (max PSI=33.9467)",
+    "config": "ml/configs/retrain.yaml",
+    "status": "success",
+    "new_version": null,
+    "duration_seconds": 7.9,
+    "error": null
+  }
+]

@@ -93,3 +93,43 @@ export async function fetchABStats(modelName: string): Promise<ABTestStats> {
   const { data } = await apiClient.get<ABTestStats>(`/api/ab-stats/${modelName}`);
   return data;
 }
+
+// ── Retraining ────────────────────────────────────────────────────────────────
+
+export interface RetrainEvent {
+  id: string;
+  timestamp: string;
+  model_name: string;
+  triggered_by_version: string;
+  trigger: "auto" | "manual";
+  reason: string;
+  config: string;
+  status: "success" | "failed";
+  new_version: string | null;
+  duration_seconds: number | null;
+  error: string | null;
+}
+
+export interface RetrainLogResponse {
+  events: RetrainEvent[];
+  retrain_in_progress: boolean;
+}
+
+export async function triggerRetrain(
+  modelName: string,
+  version?: string
+): Promise<RetrainEvent> {
+  const { data } = await apiClient.post<RetrainEvent>(
+    `/api/retrain/${modelName}`,
+    null,
+    { params: version ? { version } : {} }
+  );
+  return data;
+}
+
+export async function fetchRetrainLog(limit = 10): Promise<RetrainLogResponse> {
+  const { data } = await apiClient.get<RetrainLogResponse>("/api/retrain-log", {
+    params: { limit },
+  });
+  return data;
+}

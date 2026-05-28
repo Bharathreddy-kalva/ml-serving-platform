@@ -1,16 +1,26 @@
-version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ML Serving Platform — full-stack compose
+#
+# Public ports
+#   80   nginx   → dashboard + API (no CORS issues; single origin)
+#   5001 mlflow  → MLflow tracking UI
+#   8000 backend → FastAPI docs / direct API access during development
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-postgres-creds: &postgres-creds
+  POSTGRES_DB:       mlserving
+  POSTGRES_USER:     mlserving
+  POSTGRES_PASSWORD: changeme
 
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     restart: unless-stopped
-    env_file: ../.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-mlserving}
-      POSTGRES_USER: ${POSTGRES_USER:-mlserving}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-    ports:
-      - "5432:5432"
+      <<: *postgres-creds
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ../database/migrations:/docker-entrypoint-initdb.d:ro
@@ -20,46 +30,80 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── MLflow tracking server ──────────────────────────────────────────────────
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.13.0
+    build:
+      context: ./docker/mlflow
+      dockerfile: Dockerfile
     restart: unless-stopped
     command: >
       mlflow server
-      --backend-store-uri postgresql://${POSTGRES_USER:-mlserving}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-mlserving}
-      --default-artifact-root s3://${S3_MODEL_BUCKET:-mlserving-models}
-      --host 0.0.0.0
-      --port 5001
+        --backend-store-uri      postgresql://mlserving:changeme@postgres:5432/mlserving
+        --artifacts-destination  /mlflow/artifacts
+        --serve-artifacts
+        --host 0.0.0.0
+        --port 5001
     ports:
       - "5001:5001"
-    env_file: ../.env
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
+  # ── FastAPI inference + monitoring backend ──────────────────────────────────
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      context: ..                   # repo root — includes both backend/ and ml/
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
-    env_file: ../.env
+    environment:
+      DATABASE_URL:         postgresql://mlserving:changeme@postgres:5432/mlserving
+      MLFLOW_TRACKING_URI:  http://mlflow:5001
+      MLFLOW_MODEL_STAGES:  '["Production","Staging","None"]'
+      BACKEND_CORS_ORIGINS: '["http://localhost","http://localhost:3000","http://localhost:8000"]'
+      AB_SPLIT_PERCENT:     "50"
+      RETRAIN_CONFIG:       ml/configs/retrain.yaml
+      RETRAIN_CHECK_INTERVAL: "60"
     ports:
       - "8000:8000"
+    volumes:
+      - ml_artifacts:/repo/ml/artifacts   # feature_stats.json + retrain_log.json
     depends_on:
       postgres:
         condition: service_healthy
       mlflow:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
+  # ── React dashboard (nginx, production build) ───────────────────────────────
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  # ── Nginx reverse proxy (single public entry point) ─────────────────────────
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -68,8 +112,18 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - backend
-      - frontend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
 volumes:
   pg_data:
+  mlflow_artifacts:
+  ml_artifacts:

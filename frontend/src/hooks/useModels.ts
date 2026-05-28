@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchModels, fetchDrift, fetchABStats } from "../api/client";
+import { fetchModels, fetchDrift, fetchABStats, fetchRetrainLog } from "../api/client";
 
 export function useModels() {
   return useQuery({
@@ -24,6 +24,14 @@ export function useABStats(modelName: string | null) {
     queryKey: ["ab-stats", modelName],
     queryFn: () => fetchABStats(modelName!),
     enabled: !!modelName,
-    refetchInterval: 8_000,   // refresh quickly so live predictions show up
+    refetchInterval: 8_000,
+  });
+}
+
+export function useRetrainLog() {
+  return useQuery({
+    queryKey: ["retrain-log"],
+    queryFn: () => fetchRetrainLog(10),
+    refetchInterval: 5_000,
   });
 }

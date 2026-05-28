@@ -3,6 +3,7 @@ import { useModels, useDrift } from "../hooks/useModels";
 import { ModelCard } from "../components/ModelCard";
 import { DriftChart } from "../components/DriftChart";
 import { ABTestPanel } from "../components/ABTestPanel";
+import { RetrainLogPanel } from "../components/RetrainLogPanel";
 
 function Spinner() {
   return (
@@ -130,6 +131,11 @@ export function Dashboard() {
           </section>
         ))}
 
+        {/* ── Retrain log ── */}
+        <section>
+          <RetrainLogPanel />
+        </section>
+
         {/* ── Drift section ── */}
         {selected && (
           <section>
@@ -182,7 +188,11 @@ export function Dashboard() {
                   )}
                 </div>
 
-                <DriftChart features={drift.features} />
+                <DriftChart
+                  features={drift.features}
+                  modelName={selected.name}
+                  modelVersion={selected.version}
+                />
               </div>
             )}
 

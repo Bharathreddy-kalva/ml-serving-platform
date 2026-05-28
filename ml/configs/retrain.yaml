@@ -1,0 +1,11 @@
+experiment_name: iris-classifier-auto-retrain
+# mlflow_tracking_uri is intentionally absent here; the retrainer injects
+# MLFLOW_TRACKING_URI as a subprocess env var so it always matches the
+# running backend's SQLite path.
+
+classifier_type: gradient_boosting
+n_estimators: 200
+learning_rate: 0.05
+max_depth: 3
+subsample: 0.8
+random_state: 42
